@@ -1,6 +1,6 @@
 # buildifier: disable=load-on-top
 
-workspace(name = "litert")
+workspace(name = "litert_")
 
 # buildifier: disable=load-on-top
 

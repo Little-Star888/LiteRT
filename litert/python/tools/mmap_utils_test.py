@@ -14,13 +14,28 @@
 # ==============================================================================
 """Test mmap_utils with both local and non-local filesystems."""
 
+import io
 import logging
-import mmap
 import os
 import sys
 import tempfile
 
 import os # import gfile
+
+for k, path in enumerate(sys.path):
+  if not os.path.exists(path):
+    print(f'sys.path[{k}]: {path}: Does not exist.')
+  elif 'litert' in path:
+    print(f'sys.path[{k}]: {path}:')
+    for root, _, files in os.walk(path):
+      print(f'  {root.replace(path, "")}: {", ".join(files)}.')
+  else:
+    print(
+        f'sys.path[{k}]: {path}:'
+        f' {os.listdir(path) if os.path.isdir(path) else "Exists"}.'
+    )
+
+
 from absl.testing import absltest as googletest
 from litert.python.tools import mmap_utils
 
