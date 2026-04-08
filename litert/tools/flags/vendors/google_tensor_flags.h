@@ -24,8 +24,6 @@
 
 // COMPILATION OPTIONS /////////////////////////////////////////////////////////
 
-#if defined(INCLUDE_GOOGLE_TENSOR_COMPILE_FLAGS)
-
 ABSL_DECLARE_FLAG(LrtGoogleTensorOptionsTruncationType,
                   google_tensor_truncation_type);
 
@@ -56,12 +54,7 @@ std::string AbslUnparseFlag(LrtGoogleTensorOptionsShardingIntensity options);
 
 ABSL_DECLARE_FLAG(std::string, google_tensor_testing_flags);
 
-#endif
-
 // PARSERS (internal) //////////////////////////////////////////////////////////
-
-#if defined(INCLUDE_GOOGLE_TENSOR_COMPILE_FLAGS) || \
-    defined(INCLUDE_GOOGLE_TENSOR_RUNTIME_FLAGS)
 
 namespace litert::google_tensor {
 
@@ -70,7 +63,5 @@ namespace litert::google_tensor {
 Expected<void> UpdateGoogleTensorOptionsFromFlags(GoogleTensorOptions& options);
 
 }  // namespace litert::google_tensor
-
-#endif
 
 #endif  // THIRD_PARTY_ODML_LITERT_LITERT_TOOLS_FLAGS_VENDORS_GOOGLE_TENSOR_FLAGS_H_
