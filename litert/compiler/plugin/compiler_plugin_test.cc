@@ -98,6 +98,7 @@ TEST(CompilerPluginTest, FindTestPluginWithOptionsOk) {
 }
 
 TEST(CompilerPluginTest, GetOptionsFromTestPluginOk) {
+  auto env = Environment::Create({});
   auto litert_options = Options::Create();
   auto compiler_options = CompilerOptions::Create();
   compiler_options->SetPartitionStrategy(
@@ -113,6 +114,7 @@ TEST(CompilerPluginTest, GetOptionsFromTestPluginOk) {
   auto opaque_compiler_options =
       litert::OpaqueOptions::WrapCObject(opaque_opts, litert::OwnHandle::kYes);
   litert_options->AddOpaqueOptions(std::move(opaque_compiler_options));
+  litert_options->Build(env->GetHolder());
   LITERT_ASSERT_OK_AND_ASSIGN(
       auto plugin,
       CompilerPlugin::FindPlugin(kTestManufacturer,

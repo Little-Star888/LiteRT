@@ -14,11 +14,11 @@
 
 #include "litert/cc/litert_options.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 
 #include "litert/c/litert_common.h"
-#include "litert/c/litert_opaque_options.h"
 #include "litert/c/litert_options.h"
 #include "litert/c/options/litert_compiler_options.h"
 #include "litert/c/options/litert_cpu_options.h"
@@ -28,8 +28,13 @@
 #include "litert/c/options/litert_mediatek_options.h"
 #include "litert/c/options/litert_qualcomm_options.h"
 #include "litert/c/options/litert_runtime_options.h"
+#include "litert/c/options/litert_samsung_options.h"
+#include "litert/cc/internal/litert_handle.h"
+#include "litert/cc/internal/litert_runtime_proxy.h"
 #include "litert/cc/internal/scoped_file.h"
+#include "litert/cc/internal/scoped_weight_source.h"
 #include "litert/cc/litert_common.h"
+#include "litert/cc/litert_environment.h"
 #include "litert/cc/litert_expected.h"
 #include "litert/cc/litert_macros.h"
 #include "litert/cc/litert_opaque_options.h"
@@ -58,18 +63,20 @@ Expected<OptionType&> EnsureOption(std::optional<OptionType>& slot) {
 }
 
 template <typename OptionType>
-LiteRtStatus AppendAndReset(LiteRtOptions options,
+LiteRtStatus AppendAndReset(internal::RuntimeProxy* runtime,
+                            LiteRtOptions options,
                             std::optional<OptionType>& slot) {
   if (!slot) {
     return kLiteRtStatusOk;
   }
   LiteRtOpaqueOptions opaque = slot->Release();
   slot.reset();
-  return LiteRtAddOpaqueOptions(options, opaque);
+  return runtime->AddOpaqueOptions(options, opaque);
 }
 
 template <typename OptionType, typename GetDataFunc>
-LiteRtStatus AppendAndResetOpaqueData(LiteRtOptions options,
+LiteRtStatus AppendAndResetOpaqueData(internal::RuntimeProxy* runtime,
+                                      LiteRtOptions options,
                                       std::optional<OptionType>& slot,
                                       GetDataFunc get_data_func) {
   if (!slot) {
@@ -81,9 +88,9 @@ LiteRtStatus AppendAndResetOpaqueData(LiteRtOptions options,
   LITERT_RETURN_IF_ERROR(
       get_data_func(slot->Get(), &identifier, &payload, &payload_deleter));
   LiteRtOpaqueOptions opaque_opts = nullptr;
-  LITERT_RETURN_IF_ERROR(LiteRtCreateOpaqueOptions(
+  LITERT_RETURN_IF_ERROR(runtime->CreateOpaqueOptions(
       identifier, payload, payload_deleter, &opaque_opts));
-  LITERT_RETURN_IF_ERROR(LiteRtAddOpaqueOptions(options, opaque_opts));
+  LITERT_RETURN_IF_ERROR(runtime->AddOpaqueOptions(options, opaque_opts));
   slot.reset();
   return kLiteRtStatusOk;
 }
@@ -128,25 +135,61 @@ Expected<CompilerOptions&> Options::GetCompilerOptions() {
   return EnsureOption(compiler_options_);
 }
 
-Expected<void> Options::Build() {
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(Get(), gpu_options_,
-                                                  LrtGetOpaqueGpuOptionsData));
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(Get(), cpu_options_,
-                                                  LrtGetOpaqueCpuOptionsData));
+Expected<void> Options::Build(const internal::EnvironmentHolder& env) {
+  auto* runtime = env.runtime;
+  LiteRtOptions litert_options = Get();
+  bool need_to_create_options = false;
+  if (!litert_options) {
+    LITERT_RETURN_IF_ERROR(runtime->CreateOptions(&litert_options));
+    need_to_create_options = true;
+  }
+
+  if (lite_rt_hw_accelerator_set_.has_value()) {
+    LITERT_RETURN_IF_ERROR(runtime->SetOptionsHardwareAccelerators(
+        litert_options, *lite_rt_hw_accelerator_set_));
+  }
+
+  for (auto& litert_opaque_options : opaque_options_) {
+    LITERT_RETURN_IF_ERROR(
+        runtime->AddOpaqueOptions(litert_options, litert_opaque_options));
+  }
+  opaque_options_.clear();
+
+  for (const auto& action : build_actions_) {
+    LITERT_RETURN_IF_ERROR(action(runtime, litert_options));
+  }
+  build_actions_.clear();
+
   LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), qualcomm_options_, LrtGetOpaqueQualcommOptionsData));
+      runtime, litert_options, gpu_options_, LrtGetOpaqueGpuOptionsData));
   LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), mediatek_options_, LrtGetOpaqueMediatekOptionsData));
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), google_tensor_options_, LrtGetOpaqueGoogleTensorOptionsData));
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), intel_openvino_options_, LrtGetOpaqueIntelOpenVinoOptionsData));
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), samsung_options_, LrtGetOpaqueSamsungOptionsData));
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), runtime_options_, LrtGetOpaqueRuntimeOptionsData));
-  LITERT_RETURN_IF_ERROR(AppendAndResetOpaqueData(
-      Get(), compiler_options_, LrtGetOpaqueCompilerOptionsData));
+      runtime, litert_options, cpu_options_, LrtGetOpaqueCpuOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, qualcomm_options_,
+                               LrtGetOpaqueQualcommOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, mediatek_options_,
+                               LrtGetOpaqueMediatekOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, google_tensor_options_,
+                               LrtGetOpaqueGoogleTensorOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, intel_openvino_options_,
+                               LrtGetOpaqueIntelOpenVinoOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, samsung_options_,
+                               LrtGetOpaqueSamsungOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, runtime_options_,
+                               LrtGetOpaqueRuntimeOptionsData));
+  LITERT_RETURN_IF_ERROR(
+      AppendAndResetOpaqueData(runtime, litert_options, compiler_options_,
+                               LrtGetOpaqueCompilerOptionsData));
+
+  if (need_to_create_options) {
+    *this = Options(env, litert_options, OwnHandle::kYes);
+  }
+
   return {};
 }
 
@@ -166,13 +209,19 @@ Expected<void> Options::SetExternalWeightScopedFile(
                         "Section length must be positive for group " + name);
     }
   }
-  auto* options_impl = reinterpret_cast<LiteRtOptionsT*>(Get());
-  if (!options_impl) {
-    return Unexpected(Status::kErrorRuntimeFailure,
-                      "Options handle must not be null");
-  }
-  options_impl->scoped_weight_source = std::make_unique<ScopedWeightSource>(
+
+  auto scoped_weight_source = std::make_unique<ScopedWeightSource>(
       std::move(scoped_file), std::move(sections));
+  build_actions_.push_back(
+      [scoped_weight_source_ptr = scoped_weight_source.release()](
+          internal::RuntimeProxy* runtime, LiteRtOptions options) {
+        auto* options_impl = reinterpret_cast<LiteRtOptionsT*>(options);
+        if (!options_impl) {
+          return kLiteRtStatusErrorRuntimeFailure;
+        }
+        options_impl->scoped_weight_source.reset(scoped_weight_source_ptr);
+        return kLiteRtStatusOk;
+      });
   return {};
 }
 

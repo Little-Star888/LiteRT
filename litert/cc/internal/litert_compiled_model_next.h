@@ -116,7 +116,7 @@ class CompiledModelNext : public CompiledModel {
                      absl::Span<const TensorBuffer> output_buffers,
                      Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunHelper(signature_index, input_buffers, output_buffers, async,
@@ -138,7 +138,7 @@ class CompiledModelNext : public CompiledModel {
                      absl::Span<const TensorBuffer> output_buffers,
                      Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunHelper(/*signature_index=*/0, input_buffers, output_buffers,
@@ -161,7 +161,7 @@ class CompiledModelNext : public CompiledModel {
                           const std::vector<TensorBuffer>& output_buffers,
                           bool& async, Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     async = true;
     return RunHelper(signature_index, input_buffers, output_buffers, async,
@@ -185,7 +185,7 @@ class CompiledModelNext : public CompiledModel {
                           const std::vector<TensorBuffer>& output_buffers,
                           bool& async, Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     async = true;
     return RunHelper(/*signature_index=*/0, input_buffers, output_buffers,
@@ -257,7 +257,7 @@ class CompiledModelNext : public CompiledModel {
       const absl::flat_hash_map<absl::string_view, TensorBuffer>& output_map,
       Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunMapHelper(signature_key, input_map, output_map, async,
@@ -282,7 +282,7 @@ class CompiledModelNext : public CompiledModel {
       const absl::flat_hash_map<absl::string_view, TensorBuffer>& output_map,
       Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunMapWithIndexHelper(
@@ -309,7 +309,7 @@ class CompiledModelNext : public CompiledModel {
       const absl::flat_hash_map<absl::string_view, TensorBuffer>& output_map,
       bool& async, Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     async = true;
     return RunMapHelper(signature_key, input_map, output_map, async,

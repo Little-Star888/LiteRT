@@ -33,6 +33,7 @@
 #include "litert/c/internal/litert_logging.h"
 #include "litert/c/litert_common.h"
 #include "litert/cc/litert_common.h"
+#include "litert/cc/litert_environment.h"
 #include "litert/cc/litert_expected.h"
 #include "litert/cc/litert_macros.h"
 #include "litert/cc/litert_options.h"
@@ -151,7 +152,8 @@ Expected<ExecutionBackend> ParseBackend() {
   }
 }
 
-Expected<Options> ParseOptions(ExecutionBackend backend) {
+Expected<Options> ParseOptions(const Environment& env,
+                               ExecutionBackend backend) {
   LITERT_ASSIGN_OR_RETURN(auto options, Options::Create());
   if (backend == ExecutionBackend::kNpu) {
     LITERT_ASSIGN_OR_RETURN(auto& qnn_opts, options.GetQualcommOptions());
@@ -164,6 +166,7 @@ Expected<Options> ParseOptions(ExecutionBackend backend) {
   } else if (backend == ExecutionBackend::kGpu) {
     options.SetHardwareAccelerators(HwAccelerators::kGpu);
   }
+  LITERT_RETURN_IF_ERROR(options.Build(env.GetHolder()));
   return options;
 }
 
@@ -188,7 +191,8 @@ void Setup(const AtsConf& options) {
 
 }  // namespace
 
-Expected<AtsConf> AtsConf::ParseFlagsAndDoSetup() {
+Expected<AtsConf> AtsConf::ParseFlagsAndDoSetup(
+    const litert::Environment& env) {
   LITERT_ASSIGN_OR_RETURN(auto seeds, ParseParamSeedMap());
   LITERT_ASSIGN_OR_RETURN(auto backend, ParseBackend());
   std::vector<std::regex> neg_re;
@@ -218,9 +222,10 @@ Expected<AtsConf> AtsConf::ParseFlagsAndDoSetup() {
   auto limit = absl::GetFlag(FLAGS_limit);
   auto soc_manufacturer = absl::GetFlag(FLAGS_soc_manufacturer);
   auto soc_model = absl::GetFlag(FLAGS_soc_model);
-  LITERT_ASSIGN_OR_RETURN(auto target_options, ParseOptions(backend));
+  LITERT_ASSIGN_OR_RETURN(auto target_options, ParseOptions(env, backend));
   LITERT_ASSIGN_OR_RETURN(auto reference_options, Options::Create());
   reference_options.SetHardwareAccelerators(HwAccelerators::kCpu);
+  LITERT_RETURN_IF_ERROR(reference_options.Build(env.GetHolder()));
   LITERT_ASSIGN_OR_RETURN(
       auto plugin,
       ParsePlugin(plugin_dir, soc_manufacturer, compile_mode, target_options));

@@ -130,9 +130,9 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
   static Expected<CompiledModel> Create(litert::Environment& env,
                                         const std::string& model_filename,
                                         Options& compilation_options) {
-    LITERT_RETURN_IF_ERROR(compilation_options.Build());
-    LiteRtModel litert_model;
     auto env_holder = env.GetHolder();
+    LITERT_RETURN_IF_ERROR(compilation_options.Build(env_holder));
+    LiteRtModel litert_model;
     if (auto status = env_holder.runtime->CreateModelFromFile(
             model_filename.c_str(), &litert_model);
         status != kLiteRtStatusOk) {
@@ -156,7 +156,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
   static Expected<CompiledModel> Create(litert::Environment& env,
                                         BufferRef<uint8_t> model_buffer,
                                         Options& compilation_options) {
-    LITERT_RETURN_IF_ERROR(compilation_options.Build());
+    LITERT_RETURN_IF_ERROR(compilation_options.Build(env.GetHolder()));
     LiteRtModel litert_model;
     auto env_holder = env.GetHolder();
     if (auto status = env_holder.runtime->CreateModelFromBuffer(
@@ -442,7 +442,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
                      absl::Span<const TensorBuffer> output_buffers,
                      Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunHelper(signature_index, input_buffers, output_buffers, async,
@@ -464,7 +464,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
                      absl::Span<const TensorBuffer> output_buffers,
                      Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunHelper(/*signature_index=*/0, input_buffers, output_buffers,
@@ -513,7 +513,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
                           const std::vector<TensorBuffer>& output_buffers,
                           bool& async, Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     async = true;
     return RunHelper(signature_index, input_buffers, output_buffers, async,
@@ -537,7 +537,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
                           const std::vector<TensorBuffer>& output_buffers,
                           bool& async, Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     async = true;
     return RunHelper(/*signature_index=*/0, input_buffers, output_buffers,
@@ -648,7 +648,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
       const absl::flat_hash_map<absl::string_view, TensorBuffer>& output_map,
       Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunMapHelper(signature_key, input_map, output_map, async,
@@ -687,7 +687,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
       const absl::flat_hash_map<absl::string_view, TensorBuffer>& output_map,
       Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     bool async = false;
     return RunMapWithIndexHelper(
@@ -728,7 +728,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
       const absl::flat_hash_map<absl::string_view, TensorBuffer>& output_map,
       bool& async, Options* run_options) const {
     if (run_options) {
-      LITERT_RETURN_IF_ERROR(run_options->Build());
+      LITERT_RETURN_IF_ERROR(run_options->Build(env_));
     }
     async = true;
     return RunMapHelper(signature_key, input_map, output_map, async,
@@ -1132,7 +1132,7 @@ class CompiledModel : public internal::BaseHandle<LiteRtCompiledModel> {
   static Expected<CompiledModel> Create(litert::Environment& env,
                                         const LiteRtModel litert_model,
                                         Options& compilation_options) {
-    LITERT_RETURN_IF_ERROR(compilation_options.Build());
+    LITERT_RETURN_IF_ERROR(compilation_options.Build(env.GetHolder()));
     LiteRtCompiledModel compiled_model;
     auto env_holder = env.GetHolder();
     LITERT_RETURN_IF_ERROR(env_holder.runtime->CreateCompiledModel(

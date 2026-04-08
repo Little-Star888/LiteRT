@@ -20,6 +20,7 @@
 #include "litert/c/litert_common.h"
 #include "litert/c/litert_opaque_options.h"
 #include "litert/cc/internal/litert_handle.h"
+#include "litert/cc/litert_environment.h"
 #include "litert/cc/litert_expected.h"
 #include "litert/cc/litert_macros.h"
 #include "litert/cc/litert_opaque_options.h"
@@ -84,6 +85,9 @@ TEST(OptionsHelperTest, ParseOptionsEmpty) {
 }
 
 TEST(OptionsHelperTest, WithOpqOptions) {
+  auto env = litert::Environment::Create({});
+  ASSERT_TRUE(env);
+
   auto lrt_opts = Options::Create();
   ASSERT_TRUE(lrt_opts);
 
@@ -91,6 +95,8 @@ TEST(OptionsHelperTest, WithOpqOptions) {
   ASSERT_TRUE(lrt_simple);
 
   ASSERT_TRUE(lrt_opts->AddOpaqueOptions(std::move(*lrt_simple)));
+
+  ASSERT_TRUE(lrt_opts->Build(env->GetHolder()));
 
   auto [opts, opq, simple] = ParseOptions<SimpleOptions>(lrt_opts->Get());
 
@@ -100,6 +106,9 @@ TEST(OptionsHelperTest, WithOpqOptions) {
 }
 
 TEST(OptionsHelperTest, With2OpqOptions) {
+  auto env = litert::Environment::Create({});
+  ASSERT_TRUE(env);
+
   auto lrt_opts = Options::Create();
   ASSERT_TRUE(lrt_opts);
 
@@ -107,11 +116,13 @@ TEST(OptionsHelperTest, With2OpqOptions) {
   ASSERT_TRUE(lrt_simple);
 
   ASSERT_TRUE(lrt_opts->AddOpaqueOptions(std::move(*lrt_simple)));
+  ASSERT_TRUE(lrt_opts->Build(env->GetHolder()));
 
   auto lrt_simple2 = SimpleOptions2::Create();
   ASSERT_TRUE(lrt_simple2);
 
   ASSERT_TRUE(lrt_opts->AddOpaqueOptions(std::move(*lrt_simple2)));
+  ASSERT_TRUE(lrt_opts->Build(env->GetHolder()));
 
   auto [opts, opq, simple, simple2] =
       ParseOptions<SimpleOptions, SimpleOptions2>(lrt_opts->Get());

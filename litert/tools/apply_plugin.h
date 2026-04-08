@@ -148,16 +148,18 @@ struct ApplyPluginRun {
   // plugin.
   absl::flat_hash_set<uint32_t> subgraphs = {};
 
-  // Options structure (containing opaque chain).
-  // TODO: lukeboyer - Consolidate as much as possible from this class
-  // into the official options api.
-  Options options;
-
   // Environment options.
   Environment environment = [] {
     LITERT_ASSIGN_OR_ABORT(Environment e, Environment::Create({}));
     return e;
   }();
+
+  // Options structure (containing opaque chain).
+  // TODO: lukeboyer - Consolidate as much as possible from this class
+  // into the official options api.
+  // NOTE: Keep this after the environment so the options are destroyed before
+  // the environment which has the RuntimeProxy.
+  Options options;
 };
 
 LiteRtStatus ApplyPlugin(ApplyPluginRun::Ptr run);

@@ -24,6 +24,7 @@
 #include "litert/c/litert_op_code.h"
 #include "litert/cc/litert_buffer_ref.h"
 #include "litert/cc/litert_common.h"
+#include "litert/cc/litert_environment.h"
 #include "litert/cc/litert_options.h"
 #include "litert/test/generators/graph_helpers.h"
 #include "litert/test/matchers.h"
@@ -37,6 +38,7 @@ using ::testing::ElementsAreArray;
 
 #ifndef _TEST_NPU
 TEST(CpuCompiledModelExecutorTest, CreateAndRunModel) {
+  LITERT_ASSERT_OK_AND_ASSIGN(auto env, Environment::Create({}));
   std::vector<int32_t> cst_data = {1};
   TensorDetails lhs = {{2, 2}, kLiteRtElementTypeInt32, "lhs"};
   TensorDetails rhs = {{},
@@ -52,6 +54,7 @@ TEST(CpuCompiledModelExecutorTest, CreateAndRunModel) {
 
   LITERT_ASSERT_OK_AND_ASSIGN(auto options, Options::Create());
   options.SetHardwareAccelerators(HwAccelerators::kCpu);
+  LITERT_EXPECT_OK(options.Build(env.GetHolder()));
   LITERT_ASSERT_OK_AND_ASSIGN(
       auto executor, CpuCompiledModelExecutor::Create(*model, options));
   std::vector<SimpleBuffer> inputs;
@@ -65,6 +68,7 @@ TEST(CpuCompiledModelExecutorTest, CreateAndRunModel) {
 #else
 
 TEST(NpuCompiledModelExecutorTest, CreateAndRunModel) {
+  LITERT_ASSERT_OK_AND_ASSIGN(auto env, Environment::Create({}));
   std::vector<int32_t> cst_data = {1};
   TensorDetails lhs = {{2, 2}, kLiteRtElementTypeInt32, "lhs"};
   TensorDetails rhs = {{},
@@ -80,6 +84,7 @@ TEST(NpuCompiledModelExecutorTest, CreateAndRunModel) {
 
   LITERT_ASSERT_OK_AND_ASSIGN(auto options, Options::Create());
   options.SetHardwareAccelerators(HwAccelerators::kNpu);
+  LITERT_EXPECT_OK(options.Build(env.GetHolder()));
   LITERT_ASSERT_OK_AND_ASSIGN(
       auto executor,
       NpuCompiledModelExecutor::Create(*model, options, "/data/local/tmp",

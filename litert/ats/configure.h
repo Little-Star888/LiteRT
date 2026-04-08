@@ -27,6 +27,7 @@
 #include "absl/strings/string_view.h"  // from @com_google_absl
 #include "litert/ats/common.h"
 #include "litert/cc/internal/litert_rng.h"
+#include "litert/cc/litert_environment.h"
 #include "litert/cc/litert_expected.h"
 #include "litert/cc/litert_options.h"
 #include "litert/compiler/plugin/compiler_plugin.h"
@@ -108,7 +109,7 @@ class AtsConf {
 
   // Parse flags into this class and do any global setup needed which depends
   // on said flags.
-  static Expected<AtsConf> ParseFlagsAndDoSetup();
+  static Expected<AtsConf> ParseFlagsAndDoSetup(const litert::Environment& env);
 
   // Get the user-specified seed for param generation for the test logic with
   // the given name. Default is provided if not specified.

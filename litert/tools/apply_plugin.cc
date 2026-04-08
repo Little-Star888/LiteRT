@@ -479,7 +479,7 @@ LiteRtStatus Apply(Context& ctx) {
 }  // namespace
 
 LiteRtStatus ApplyPlugin(ApplyPluginRun::Ptr run) {
-  if (auto status = run->options.Build(); !status) {
+  if (auto status = run->options.Build(run->environment.GetHolder()); !status) {
     run->dump_out.Get().get()
         << "Failed to build options, Error: " << status.Error().Message()
         << "\n";
