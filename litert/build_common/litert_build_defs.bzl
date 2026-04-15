@@ -30,6 +30,7 @@ load("//litert/build_common:special_rule.bzl", "litert_android_linkopts")
 
 _LRT_SO_PREFIX = "libLiteRt"
 _SO_EXT = ".so"
+_DLL_EXT = ".dll"
 _SHARED_LIB_SUFFIX = "_so"
 
 # Public
@@ -112,7 +113,16 @@ def _valid_shared_lib_name(name):
     return name.endswith(_SHARED_LIB_SUFFIX)
 
 def _valid_so_name(name):
-    return name.startswith(_LRT_SO_PREFIX) and name.endswith(_SO_EXT)
+    return name.startswith(_LRT_SO_PREFIX) and (name.endswith(_SO_EXT) or name.endswith(_DLL_EXT))
+
+def _platform_shared_lib_name(name):
+    windows_name = name
+    if windows_name.endswith(_SO_EXT):
+        windows_name = windows_name[:-len(_SO_EXT)] + _DLL_EXT
+    return select({
+        "//litert/build_common:windows": windows_name,
+        "//conditions:default": name,
+    })
 
 def _make_target_ref(name):
     return ":{}".format(name)
@@ -424,7 +434,7 @@ def litert_dynamic_lib(
     if not _valid_shared_lib_name(shared_lib_name):
         fail("\"shared_lib_name\" must end with \"_so\"")
     if not _valid_so_name(so_name):
-        fail("\"so_name\" must be \"libLiteRt*.so\"")
+        fail("\"so_name\" must be \"libLiteRt*.so\" or \"libLiteRt*.dll\"")
 
     lib_name = name
     cc_lib_kwargs["name"] = lib_name
@@ -448,7 +458,7 @@ def litert_dynamic_lib(
         additional_linker_inputs = export_lrt_only_script()
     cc_shared_library(
         name = shared_lib_name,
-        shared_lib_name = so_name,
+        shared_lib_name = _platform_shared_lib_name(so_name),
         user_link_flags = user_link_flags,
         additional_linker_inputs = additional_linker_inputs,
         tags = tags,

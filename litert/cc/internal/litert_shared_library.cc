@@ -72,7 +72,7 @@ RtldFlags SanitizeFlagsInCaseOfAsan(RtldFlags flags) {
 #if LITERT_WINDOWS_OS
 #include <windows.h>
 
-#include <cctype>
+#include <filesystem>
 #include <string>
 
 // Windows implementation of dlfcn.h functions
@@ -105,12 +105,6 @@ std::string GetWindowsErrorString(DWORD error_code) {
   return message;
 }
 
-bool IsAbsolutePath(const std::string& path) {
-  return (path.size() >= 3 && std::isalpha(static_cast<unsigned char>(path[0])) &&
-          path[1] == ':' && (path[2] == '\\' || path[2] == '/')) ||
-         (path.size() >= 2 && path[0] == '\\' && path[1] == '\\');
-}
-
 const char* dlerror() {
   return g_last_error.empty() ? nullptr : g_last_error.c_str();
 }
@@ -124,37 +118,27 @@ void* dlopen(const char* filename, int flags) {
     return GetModuleHandle(NULL);
   }
 
-  std::string requested_name(filename);
-  std::string fallback_name = requested_name;
-  size_t pos = fallback_name.rfind(".so");
-  if (pos != std::string::npos && pos == fallback_name.length() - 3) {
-    fallback_name.replace(pos, 3, ".dll");
+  // Normalize Windows shared-library loads to the .dll artifact name.
+  std::string library_name(filename);
+  size_t pos = library_name.rfind(".so");
+  if (pos != std::string::npos && pos == library_name.length() - 3) {
+    library_name.replace(pos, 3, ".dll");
   }
 
-  // When loading by absolute path, ask Windows to also search that DLL's
-  // directory for dependencies. This lets packaged sibling libLiteRt.dll
-  // resolve without mutating PATH.
-  const auto load_with_search_path = [](const std::string& path) {
-    if (IsAbsolutePath(path)) {
-      return LoadLibraryExA(path.c_str(), nullptr,
+  // For absolute paths, ask Windows to also search the DLL's directory for
+  // transitive dependencies. This lets sibling libLiteRt.dll resolve when a
+  // plugin is loaded from an absolute path.
+  HMODULE handle = nullptr;
+  if (std::filesystem::path(library_name).is_absolute()) {
+    handle = LoadLibraryExA(library_name.c_str(), nullptr,
                             LOAD_WITH_ALTERED_SEARCH_PATH);
-    }
-    return LoadLibraryA(path.c_str());
-  };
-
-  // Bazel on Windows may still emit shared libraries with a .so suffix. Try
-  // the requested path first, then fall back to a .dll spelling.
-  HMODULE handle = load_with_search_path(requested_name);
-  if (!handle && fallback_name != requested_name) {
-    handle = load_with_search_path(fallback_name);
+  } else {
+    handle = LoadLibraryA(library_name.c_str());
   }
   if (!handle) {
     DWORD error = GetLastError();
-    g_last_error = "Failed to load library '" + requested_name + "'";
-    if (fallback_name != requested_name) {
-      g_last_error += " or fallback '" + fallback_name + "'";
-    }
-    g_last_error += ": " + GetWindowsErrorString(error);
+    g_last_error = "Failed to load library '" + library_name +
+                   "': " + GetWindowsErrorString(error);
   }
 
   return handle;
