@@ -89,6 +89,8 @@ LiteRtStatus IsTensorSupported(const TflTensor& tensor) {
 
 LiteRtElementType MapElementType(TflElementType type) {
   switch (type) {
+    case tflite::TensorType_RESOURCE:
+      return kLiteRtElementTypeTfResource;
     case tflite::TensorType_FLOAT64:
       return kLiteRtElementTypeFloat64;
     case tflite::TensorType_FLOAT32:
