@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_ODML_LITERT_LITERT_C_INTERNAL_LITERT_CUSTOM_TENSOR_BUFFER_HANDLERS_DEF_H_
 #define THIRD_PARTY_ODML_LITERT_LITERT_C_INTERNAL_LITERT_CUSTOM_TENSOR_BUFFER_HANDLERS_DEF_H_
 
-#include <cstddef>
+#include <stddef.h>
 
 #include "litert/c/litert_custom_tensor_buffer.h"
 #include "litert/c/litert_environment_options.h"
